@@ -12,12 +12,6 @@ import (
 	"github.com/xlab/handysort"
 )
 
-type Params struct {
-	ecrCli   *ecr.ECR
-	repoName string
-	token    string
-}
-
 type ByAlphabet []*ecr.ImageIdentifier
 
 func main() {
