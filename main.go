@@ -1,115 +1,169 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
-	"os"
+	"sort"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
+	"github.com/xlab/handysort"
 )
 
-type Result struct {
-	Data interface{} `json:"data"`
+type Params struct {
+	ecrCli   *ecr.ECR
+	repoName string
+	token    string
 }
+
+type ByAlphabet []*ecr.ImageIdentifier
 
 func main() {
 	var (
-		amountToKeep = flag.int("amount-to-keep", 100, "amount of images / repo you want to keep")
-		awsRegion    = flag.String("aws.region", "eu-central-1", "AWS region")
-		simulate     = flag.Bool("simulate", true, "simulate or not")
-		list         interface{}
-		err          error
+		amountToKeep  = flag.Int("amount-to-keep", 100, "amount of images / repo you want to keep")
+		awsRegion     = flag.String("aws.region", "eu-central-1", "AWS region")
+		repoToProcess = flag.String("repository", "", "AWS region")
+		dryRun        = flag.Bool("dry-run", false, "dry run")
+		error         error
 	)
 
 	flag.Parse()
 
 	ecrCli := ecr.New(session.New(), aws.NewConfig().WithRegion(*awsRegion))
 
-	repos, error := getAllRepoNames(ecrCli)
+	var repos []string
+
+	if *repoToProcess != "" {
+		repos = []string{*repoToProcess}
+	} else {
+		repos, error = getAllRepoNames(ecrCli)
+	}
 
 	if error != nil {
-		log.Fatal(err)
+		log.Fatal(error)
 	}
 
-	log.Printf("repos %v", repos)
-
-	if !*simulate {
-		log.Print("jop")
-	}
+	log.Printf("Repositories to process: %v", repos)
 
 	for _, repo := range repos {
-		images, error := getRepoImages(ecrCli, repo)
+		images, error := getRepoImages(ecrCli, repo, "")
+		if error != nil {
+			log.Fatal(error)
+		}
+		log.Printf("Number of images in %v: %v", repo, len(images))
+
+		_, error = processRepo(ecrCli, repo, images, *dryRun, *amountToKeep)
 
 		if error != nil {
-			log.Fatal(err)
+			log.Fatal(error)
 		}
-
-		resp, error := processRepo(ecrCli, repo, images, *simulate, *amountToKeep)
-
-		log.Printf("response %v", resp)
-	}
-
-	err = json.NewEncoder(os.Stdout).Encode(Result{Data: list})
-
-	if err != nil {
-		log.Fatal(err)
 	}
 }
 
-func processRepo(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifier, simulate bool, amountToKeep int) (bool, error) {
-	var imageIds []*ecr.ImageIdentifier
+func (s ByAlphabet) Len() int {
+	return len(s)
+}
+func (s ByAlphabet) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
 
-	tagFiltered := filterByTag(images)
-	log.Printf("images without tag %v", len(tagFiltered))
+func (s ByAlphabet) Less(i, j int) bool {
+	return handysort.StringLess(*s[i].ImageTag, *s[j].ImageTag)
+}
+
+func processRepo(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifier, dryRun bool, amountToKeep int) (bool, error) {
+	var imageIdents []*ecr.ImageIdentifier
+
+	tagFiltered, remainingImages := filterByTag(images)
 
 	for _, image := range tagFiltered {
-		imageIds = append(imageIds, image)
+		imageIdents = append(imageIdents, image)
 	}
 
-	if !simulate {
-		resp, err := ecrCli.BatchDeleteImage(&ecr.BatchDeleteImageInput{
+	amountFiltered := filterByAmount(remainingImages, amountToKeep)
+
+	for _, image := range amountFiltered {
+		imageIdents = append(imageIdents, image)
+	}
+
+	log.Printf("number of images to delete: %v", len(imageIdents))
+
+	if !dryRun {
+		_, err := ecrCli.BatchDeleteImage(&ecr.BatchDeleteImageInput{
 			RepositoryName: aws.String(repoName),
-			ImageIds:       images,
+			ImageIds:       imageIdents,
 		})
 
 		if err != nil {
 			return false, fmt.Errorf("deleting %v images: %v", repoName, err)
 		}
 
-		log.Printf("jop: %v", resp)
+		log.Printf("deleted %v images in %v", len(imageIdents), repoName)
 	} else {
 		log.Print("simulation...")
-		log.Printf("repo %v contains %v images and %v will be deleted", repoName, len(images), len(imageIds))
-		log.Print("images to delete: $v", imageIds)
+		log.Print("images to delete: $v", imageIdents)
 	}
 
 	return true, nil
 }
 
-func filterByTag(images []*ecr.ImageIdentifier) (imgs []*ecr.ImageIdentifier) {
+func filterByAmount(images []*ecr.ImageIdentifier, amountToKeep int) []*ecr.ImageIdentifier {
+	sort.Sort(ByAlphabet(images))
+
+	if len(images) < amountToKeep {
+		var a []*ecr.ImageIdentifier
+		return a
+	}
+
+	return images[0 : len(images)-amountToKeep]
+}
+
+func filterByTag(images []*ecr.ImageIdentifier) (imagesWithoutTag []*ecr.ImageIdentifier, imagesWithTag []*ecr.ImageIdentifier) {
 	for _, image := range images {
 		if image.ImageTag == nil {
-			imgs = append(imgs, image)
+			imagesWithoutTag = append(imagesWithoutTag, image)
+		} else {
+			imagesWithTag = append(imagesWithTag, image)
 		}
 	}
 
-	return imgs
+	return imagesWithoutTag, imagesWithTag
 }
 
-func getRepoImages(ecrCli *ecr.ECR, repoName string) ([]*ecr.ImageIdentifier, error) {
-	resp, err := ecrCli.ListImages(&ecr.ListImagesInput{
-		RepositoryName: aws.String(repoName),
-	})
+func getRepoImages(ecrCli *ecr.ECR, repoName string, token string) ([]*ecr.ImageIdentifier, error) {
+	var resp *ecr.ListImagesOutput
+	var err error
+
+	if token != "" {
+		resp, err = ecrCli.ListImages(&ecr.ListImagesInput{
+			RepositoryName: aws.String(repoName),
+			NextToken:      aws.String(token),
+		})
+	} else {
+		resp, err = ecrCli.ListImages(&ecr.ListImagesInput{
+			RepositoryName: aws.String(repoName),
+		})
+	}
 
 	if err != nil {
 		return nil, fmt.Errorf("getting %v images: %v", repoName, err)
 	}
 
-	return resp.ImageIds, nil
+	imageIdents := resp.ImageIds
+
+	if resp.NextToken != nil {
+		resp2, err2 := getRepoImages(ecrCli, repoName, *resp.NextToken)
+
+		if err2 != nil {
+			return nil, fmt.Errorf("getting %v images: %v", repoName, err2)
+		}
+
+		imageIdents = append(imageIdents, resp2...)
+	}
+
+	return imageIdents, nil
 }
 
 func getAllRepoNames(ecrCli *ecr.ECR) ([]string, error) {
