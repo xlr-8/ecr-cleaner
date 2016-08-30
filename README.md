@@ -1,2 +1,2 @@
-# ecr-maintainer
+# ecr-cleaner
 Deletes old images from ecr

@@ -1,4 +1,4 @@
-PROJECT_NAME=ecr-maintainer
+PROJECT_NAME=ecr-cleaner
 VERSION=v0.1
 
 all: bin
