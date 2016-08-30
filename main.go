@@ -12,7 +12,19 @@ import (
 	"github.com/xlab/handysort"
 )
 
+// ByAlphabet is used to sort the images in alphabetical order
 type ByAlphabet []*ecr.ImageIdentifier
+
+func (s ByAlphabet) Len() int {
+	return len(s)
+}
+func (s ByAlphabet) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s ByAlphabet) Less(i, j int) bool {
+	return handysort.StringLess(*s[i].ImageTag, *s[j].ImageTag)
+}
 
 func main() {
 	var (
@@ -54,17 +66,6 @@ func main() {
 			log.Fatal(error)
 		}
 	}
-}
-
-func (s ByAlphabet) Len() int {
-	return len(s)
-}
-func (s ByAlphabet) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s ByAlphabet) Less(i, j int) bool {
-	return handysort.StringLess(*s[i].ImageTag, *s[j].ImageTag)
 }
 
 func processRepo(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifier, dryRun bool, amountToKeep int) (bool, error) {
