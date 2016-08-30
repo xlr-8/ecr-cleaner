@@ -24,9 +24,6 @@ func main() {
 	)
 
 	flag.Parse()
-	flag.Usage = func() {
-		flag.PrintDefaults()
-	}
 
 	ecrCli := ecr.New(session.New(), aws.NewConfig().WithRegion(*awsRegion))
 
