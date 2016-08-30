@@ -12,12 +12,13 @@ This clean up a specific repository as well as all repos within an aws account.
 5. Add n oldest images to deletion
 6. Delete images from the repository
 
+### Installation
+`go get github.com/WeltN24/ecr-cleaner`
 
 ### Default values
 `aws.region = eu-central-1`
 `dry-run = false`
 `amount-to-keep = 100`
-
 
 ### Examples
 clean up all repos
