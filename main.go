@@ -18,12 +18,15 @@ func main() {
 	var (
 		amountToKeep  = flag.Int("amount-to-keep", 100, "amount of images / repo you want to keep")
 		awsRegion     = flag.String("aws.region", "eu-central-1", "AWS region")
-		repoToProcess = flag.String("repository", "", "AWS region")
-		dryRun        = flag.Bool("dry-run", false, "dry run")
+		repoToProcess = flag.String("repository", "", "repository you want to process, empty if you want all")
+		dryRun        = flag.Bool("dry-run", false, "run the code without actual deleting")
 		error         error
 	)
 
 	flag.Parse()
+	flag.Usage = func() {
+		flag.PrintDefaults()
+	}
 
 	ecrCli := ecr.New(session.New(), aws.NewConfig().WithRegion(*awsRegion))
 
