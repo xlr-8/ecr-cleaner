@@ -102,7 +102,7 @@ func processRepo(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifier
 
 		log.Printf("deleted %v images in %v", len(imageIdents), repoName)
 	} else {
-		log.Print("simulation...")
+		log.Print("dry run ...")
 		log.Print("images to delete: $v", imageIdents)
 	}
 
