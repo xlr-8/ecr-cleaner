@@ -2,7 +2,8 @@ from subprocess import Popen, PIPE
 import sys
 
 def handler(event=None, context=None):
-    p = Popen(['./ecr-cleaner', "-aws.region", "eu-west-1", "-dry-run", "true"], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=-1)
+    cmd = ['./ecr-cleaner'] + parseJsonToParams(event)
+    p = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=-1)
 
     while True:
         out = p.stderr.read(1)
@@ -13,3 +14,13 @@ def handler(event=None, context=None):
             sys.stdout.flush()
 
     return p.returncode
+
+
+def parseJsonToParams(jsonEvent):
+    params = []
+
+    for param in jsonEvent:
+        params.append(param["name"])
+        params.append(param["value"])
+
+    return params
