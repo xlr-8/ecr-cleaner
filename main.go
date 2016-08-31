@@ -69,15 +69,34 @@ func cleanupImages(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifi
 		return nil
 	}
 
-	_, err := ecrCli.BatchDeleteImage(&ecr.BatchDeleteImageInput{
-		RepositoryName: aws.String(repoName),
-		ImageIds:       deleteImageIDs,
-	})
+	i := 0
+	for i = 0; i < int(len(deleteImageIDs)/100); i++ {
+		err := deleteImages(ecrCli, repoName, deleteImageIDs[i*100:(i+1)*100])
+
+		if err != nil {
+			return fmt.Errorf("deleting images in repo %v: %v", repoName, err)
+		}
+	}
+
+	err := deleteImages(ecrCli, repoName, deleteImageIDs[i*100:])
+
 	if err != nil {
 		return fmt.Errorf("deleting images in repo %v: %v", repoName, err)
 	}
 
 	log.Printf("deleted %v images in repo %v", len(deleteImageIDs), repoName)
+	return nil
+}
+
+func deleteImages(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifier) error {
+	_, err := ecrCli.BatchDeleteImage(&ecr.BatchDeleteImageInput{
+		RepositoryName: aws.String(repoName),
+		ImageIds:       images,
+	})
+	if err != nil {
+		return fmt.Errorf("deleting images in repo %v: %v", repoName, err)
+	}
+
 	return nil
 }
 
