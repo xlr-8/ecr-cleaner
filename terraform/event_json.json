@@ -1,0 +1,18 @@
+[
+  {
+    "name": "-aws.region",
+    "value": "${aws_region}"
+  },
+  {
+    "name": "-dry-run",
+    "value": "${dry_run}"
+  },
+  {
+    "name": "-amount-to-keep",
+    "value": "${amount_of_images_to_keep}"
+  },
+  {
+    "name": "-repository",
+    "value": "${repository}"
+  }
+]
