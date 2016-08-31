@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
+	"github.com/xlab/handysort"
 )
 
 func main() {
@@ -83,7 +84,7 @@ func cleanupImages(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifi
 type byTag []*ecr.ImageIdentifier
 
 func (p byTag) Len() int           { return len(p) }
-func (p byTag) Less(i, j int) bool { return *p[i].ImageTag < *p[j].ImageTag }
+func (p byTag) Less(i, j int) bool { return handysort.StringLess(*p[i].ImageTag, *p[j].ImageTag) }
 func (p byTag) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 func imagesToRemove(images []*ecr.ImageIdentifier, amountToKeep int) []*ecr.ImageIdentifier {
