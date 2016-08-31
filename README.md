@@ -23,16 +23,16 @@ This clean up a specific repository as well as all repos within an aws account.
 ### Examples
 clean up all repos
 
-`ecr-cleaner -aws.region=eu-west-1`
+`ecr-cleaner -aws.region eu-west-1`
 
 clean up my-awesome-repo
 
-`ecr-cleaner -aws.region=eu-west-1 -repository my-awesome-repo`
+`ecr-cleaner -aws.region eu-west-1 -repository my-awesome-repo`
 
 go for a dry run
 
-`ecr-cleaner -aws.region=eu-west-1 -repository my-awesome-repo -dry-run true`
+`ecr-cleaner -aws.region eu-west-1 -repository my-awesome-repo -dry-run true`
 
 leave n images in repo
 
-`ecr-cleaner -aws.region=eu-west-1 -repository my-awesome-repo -amount-to-keep 5`
+`ecr-cleaner -aws.region eu-west-1 -repository my-awesome-repo -amount-to-keep 5`
