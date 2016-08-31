@@ -2,6 +2,7 @@
 Deletes old images from ecr
 
 This clean up a specific repository as well as all repos within an aws account.
+This works perfectly with images which are tagged like 0.1.2-b12-g43gsdf, it's version-jenkinsBuildNumer-gitHash.
 
 
 ### Algorithm
