@@ -9,15 +9,32 @@ import (
 )
 
 func TestSeparateImages(t *testing.T) {
-	images := []*ecr.ImageIdentifier{
-		{ImageDigest: aws.String("foo"), ImageTag: aws.String("foo")},
-		{ImageDigest: aws.String("bar")},
+	testcases := map[string]struct {
+		images       []*ecr.ImageIdentifier
+		expTagsLen   int
+		expNoTagsLen int
+	}{
+		"empty": {images: []*ecr.ImageIdentifier{},
+			expTagsLen:   0,
+			expNoTagsLen: 0,
+		},
+		"simple": {images: []*ecr.ImageIdentifier{
+			{ImageDigest: aws.String("foo"), ImageTag: aws.String("foo")},
+			{ImageDigest: aws.String("bar")},
+		},
+			expTagsLen:   1,
+			expNoTagsLen: 1,
+		},
 	}
-	noTag, withTag := separateHavingTag(images)
-	if len(noTag) != 1 {
-		t.Errorf("want 1 with no tag got %s", len(noTag))
-	}
-	if len(withTag) != 1 {
-		t.Errorf("want 1 with tag got %s", len(withTag))
+
+	for _, testcase := range testcases {
+
+		noTag, withTag := separateHavingTag(testcase.images)
+		if len(noTag) != testcase.expNoTagsLen {
+			t.Errorf("want %d with no tag got %s", testcase.expNoTagsLen, len(noTag))
+		}
+		if len(withTag) != testcase.expTagsLen {
+			t.Errorf("want %d with tag got %s", testcase.expTagsLen, len(withTag))
+		}
 	}
 }
