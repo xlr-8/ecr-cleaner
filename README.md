@@ -4,6 +4,14 @@ Deletes old images from ecr
 This clean up a specific repository as well as all repos within an aws account.
 This works perfectly with images which are tagged like 0.1.2-b12-g43gsdf, it's version-jenkinsBuildNumer-gitHash.
 
+### Example
+0.1.1-b44-g3g9s7
+
+0.1.2-b3-g89hjf
+
+0.1.2-b10-g4fs7h
+
+0.1.2-b12-g9j6ng
 
 ### Algorithm
 1. Retrieve repo from ecr
