@@ -43,3 +43,32 @@ go for a dry run
 leave n images in repo
 
 `ecr-cleaner -aws.region eu-west-1 -repository my-awesome-repo -amount-to-keep 5`
+
+
+### Deploying as lambda to aws
+If you wish to clean up your repositories periodically you can to this with the help of terraform. 
+
+in the root of the repo, this creates an archive which will be 
+
+1. You have to fork the repo
+2. execute `make package`
+3. go to into terraform folder
+4. set up the needed variables
+    * `cron` expects a string in [aws cron syntaxt](http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html) (`0 3 1 * ? *` run lambda at 3am 1. of each month)
+    * `aws_region` is the region in which you want to deploy the lambda
+    * `repo_region` is the region in which you store your ec2 repositories
+    * `repository` is the repo you want to process
+    * `dry-run` (boolean) if you want to dry run
+5. run terraform
+
+If you want to persist the state it's the easiest way to create a shell script and write the remote state to s3. Here is an example:
+    
+    #!/bin/bash
+    terraform get -update
+    terraform remote config \
+        -backend=s3\
+        -backend-config="bucket=maintaince" \
+        -backend-config="key=ecr_cleaner/terraform.tfstate" \
+        -backend-config="region=eu-central-1"
+        
+Execute the script the get remote state from s3 or create one and execute terraform afterwards.
