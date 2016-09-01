@@ -4,20 +4,18 @@ Deletes old images from ecr
 This clean up a specific repository as well as all repos within an aws account.
 This works perfectly with images which are tagged like 0.1.2-b12-g43gsdf, it's version-jenkinsBuildNumer-gitHash.
 
-### Example
-0.1.1-b44-g3g9s7
-
-0.1.2-b3-g89hjf
-
-0.1.2-b10-g4fs7h
-
-0.1.2-b12-g9j6ng
+|Order example|
+|-------------|
+|0.1.1-b44-g3g9s7|
+|0.1.2-b3-g89hjf|
+|0.1.2-b10-g4fs7h|
+|0.1.2-b12-g9j6ng|
 
 ### Algorithm
 1. Retrieve repo from ecr
 2. Get repo images
 3. Add all images without tags to deletion
-4. Sort the remaining images in alphanumeric order
+4. Sort the remaining images in alphanumeric order with respect to their integer parts
 5. Add n oldest images to deletion
 6. Delete images from the repository
 
