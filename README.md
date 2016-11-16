@@ -72,3 +72,13 @@ If you want to persist the state it's the easiest way to create a shell script a
         -backend-config="region=eu-central-1"
         
 Execute the script the get remote state from s3 or create one and execute terraform afterwards.
+
+### Run as Docker container
+
+Build:
+
+	docker build -t ecr-cleaner .
+	
+Run:
+
+	docker run -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -it --rm ecr-cleaner -aws.region eu-west-1
