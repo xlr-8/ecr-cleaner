@@ -65,26 +65,30 @@ func cleanupImages(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifi
 
 	if dryRun {
 		log.Print("dry run ...")
-		log.Print("images to delete: %v", deleteImageIDs)
+		log.Printf("images to delete: %v", deleteImageIDs)
 		return nil
 	}
 
-	i := 0
-	for i = 0; i < int(len(deleteImageIDs)/100); i++ {
-		err := deleteImages(ecrCli, repoName, deleteImageIDs[i*100:(i+1)*100])
+	var err error
+	if int(len(deleteImageIDs)/100) > 0 {
+		i := 0
+		for i = 0; i < int(len(deleteImageIDs)/100); i++ {
+			err = deleteImages(ecrCli, repoName, deleteImageIDs[i*100:(i+1)*100])
+
+			if err != nil {
+				return fmt.Errorf("deleting images in repo %v: %v", repoName, err)
+			}
+		}
+
+		err = deleteImages(ecrCli, repoName, deleteImageIDs[i*100:])
 
 		if err != nil {
 			return fmt.Errorf("deleting images in repo %v: %v", repoName, err)
 		}
+
+		log.Printf("deleted %v images in repo %v", len(deleteImageIDs), repoName)
 	}
 
-	err := deleteImages(ecrCli, repoName, deleteImageIDs[i*100:])
-
-	if err != nil {
-		return fmt.Errorf("deleting images in repo %v: %v", repoName, err)
-	}
-
-	log.Printf("deleted %v images in repo %v", len(deleteImageIDs), repoName)
 	return nil
 }
 
