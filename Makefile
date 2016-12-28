@@ -1,5 +1,5 @@
 PROJECT_NAME=ecr-cleaner
-VERSION=v0.3
+VERSION=v0.4
 
 all: bin
 
