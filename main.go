@@ -69,7 +69,7 @@ func cleanupImages(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifi
 		return nil
 	}
 
-	if len(deleteImageIDs) > 0 {
+	if len(deleteImageIDs) <= 0 {
 		log.Printf("nothing to do so skip %v", repoName)
 		return nil
 	}
