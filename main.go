@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
-	"github.com/xlab/handysort"
 )
 
 func main() {
@@ -22,9 +21,7 @@ func main() {
 	)
 
 	flag.Parse()
-
 	ecrCli := ecr.New(session.New(), aws.NewConfig().WithRegion(*awsRegion))
-
 	repos := []string{*repoToProcess}
 	if *repoToProcess == "" {
 		repos, err = getAllRepoNames(ecrCli)
@@ -49,15 +46,15 @@ func main() {
 	}
 }
 
-func cleanupImages(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifier, dryRun bool, amountToKeep int) error {
-	var deleteImageIDs []*ecr.ImageIdentifier
+func cleanupImages(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageDetail, dryRun bool, amountToKeep int) error {
+	var deleteImageIDs []*ecr.ImageDetail
 
 	imagesNoTag, imagesWithTag := separateHavingTag(images)
 	//delete all images without tag
 	deleteImageIDs = append(deleteImageIDs, imagesNoTag...)
 
 	//delete images with tag so that `amountToKeep` remain
-	sort.Sort(byTag(imagesWithTag))
+	sort.Sort(byTime(imagesWithTag))
 	imagesWithTagToRemove := imagesToRemove(imagesWithTag, amountToKeep)
 	deleteImageIDs = append(deleteImageIDs, imagesWithTagToRemove...)
 
@@ -94,10 +91,23 @@ func cleanupImages(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifi
 	return nil
 }
 
-func deleteImages(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifier) error {
+func buildImageIdentifier(images []*ecr.ImageDetail) []*ecr.ImageIdentifier {
+	var imageIdentifiers = []*ecr.ImageIdentifier{}
+
+	for _, image := range images {
+		imageIdentifiers = append(imageIdentifiers, &ecr.ImageIdentifier{
+			ImageDigest: image.ImageDigest,
+		})
+	}
+	return imageIdentifiers
+}
+
+func deleteImages(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageDetail) error {
+	imageIdentifiers := buildImageIdentifier(images)
+
 	_, err := ecrCli.BatchDeleteImage(&ecr.BatchDeleteImageInput{
 		RepositoryName: aws.String(repoName),
-		ImageIds:       images,
+		ImageIds:       imageIdentifiers,
 	})
 	if err != nil {
 		return fmt.Errorf("deleting images in repo %v: %v", repoName, err)
@@ -106,22 +116,22 @@ func deleteImages(ecrCli *ecr.ECR, repoName string, images []*ecr.ImageIdentifie
 	return nil
 }
 
-type byTag []*ecr.ImageIdentifier
+type byTime []*ecr.ImageDetail
 
-func (p byTag) Len() int           { return len(p) }
-func (p byTag) Less(i, j int) bool { return handysort.StringLess(*p[i].ImageTag, *p[j].ImageTag) }
-func (p byTag) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p byTime) Len() int           { return len(p) }
+func (p byTime) Less(i, j int) bool { return p[i].ImagePushedAt.Unix() < p[j].ImagePushedAt.Unix() }
+func (p byTime) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
-func imagesToRemove(images []*ecr.ImageIdentifier, amountToKeep int) []*ecr.ImageIdentifier {
+func imagesToRemove(images []*ecr.ImageDetail, amountToKeep int) []*ecr.ImageDetail {
 	if len(images) < amountToKeep {
-		return []*ecr.ImageIdentifier{}
+		return []*ecr.ImageDetail{}
 	}
 	return images[0 : len(images)-amountToKeep]
 }
 
-func separateHavingTag(images []*ecr.ImageIdentifier) (imagesWithoutTag []*ecr.ImageIdentifier, imagesWithTag []*ecr.ImageIdentifier) {
+func separateHavingTag(images []*ecr.ImageDetail) (imagesWithoutTag []*ecr.ImageDetail, imagesWithTag []*ecr.ImageDetail) {
 	for _, image := range images {
-		if image.ImageTag == nil {
+		if len(image.ImageTags) == 0 {
 			imagesWithoutTag = append(imagesWithoutTag, image)
 		} else {
 			imagesWithTag = append(imagesWithTag, image)
@@ -131,20 +141,21 @@ func separateHavingTag(images []*ecr.ImageIdentifier) (imagesWithoutTag []*ecr.I
 	return imagesWithoutTag, imagesWithTag
 }
 
-func getImages(ecrCli *ecr.ECR, repoName string) ([]*ecr.ImageIdentifier, error) {
+func getImages(ecrCli *ecr.ECR, repoName string) ([]*ecr.ImageDetail, error) {
 	var (
 		token    *string
-		imageIDs = []*ecr.ImageIdentifier{}
+		imageIDs = []*ecr.ImageDetail{}
 	)
 	for {
-		resp, err := ecrCli.ListImages(&ecr.ListImagesInput{
+		params := &ecr.DescribeImagesInput{
 			RepositoryName: aws.String(repoName),
 			NextToken:      token,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("getting %v images: %v", repoName, err)
 		}
-		imageIDs = append(imageIDs, resp.ImageIds...)
+		resp, err := ecrCli.DescribeImages(params)
+		if err != nil {
+			return nil, fmt.Errorf("getting %v image details: %v", repoName, err)
+		}
+		imageIDs = append(imageIDs, resp.ImageDetails...)
 		if token = resp.NextToken; token == nil {
 			break
 		}
