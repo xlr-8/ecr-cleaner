@@ -22,20 +22,24 @@ It can clean up a specific repository as well as all repos within an aws account
 ### Examples
 clean up all repos
 
-`ecr-cleaner -aws.region eu-west-1`
+`ecr-cleaner -aws.region=eu-west-1`
 
 clean up my-awesome-repo
 
-`ecr-cleaner -aws.region eu-west-1 -repository my-awesome-repo`
+`ecr-cleaner -aws.region=eu-west-1 -repo=my-awesome-repo`
 
 go for a dry run
 
-`ecr-cleaner -aws.region eu-west-1 -repository my-awesome-repo -dry-run true`
+`ecr-cleaner -aws.region=eu-west-1 -repo=my-awesome-repo -dry-run=true`
 
 leave n images in repo
 
-`ecr-cleaner -aws.region eu-west-1 -repository my-awesome-repo -amount-to-keep 5`
+`ecr-cleaner -aws.region=eu-west-1 -repo=my-awesome-repo -keep=5`
 
+**Note**: Most of the parameters could be specified without '=' sign.
+But because of the usage of [parse flag](https://golang.org/pkg/flag/) it is
+important to think about adding '=' signs for boolean parameters, otherwise the
+parsing of the command line's options stops. [Issue hilighted here.](https://github.com/WeltN24/ecr-cleaner/issues/5)
 
 ### Deploying as lambda to aws
 If you wish to clean up your repositories periodically you can to this with the help of terraform. 
@@ -73,4 +77,4 @@ Build:
 	
 Run:
 
-	docker run -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -it --rm ecr-cleaner -aws.region eu-west-1
+	docker run -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -it --rm ecr-cleaner -dry-run=true -aws.region=eu-west-1
